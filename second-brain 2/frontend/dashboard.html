@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Manager — Current Values</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: #e8ede8;
+  --sheet: #fcfcfa;
+  --band: #dce4dc;
+  --ink: #1d2433;
+  --muted: #566070;
+  --rule: #bfc9bf;
+  --rule-soft: #dbe2db;
+  --red: #b3261e;
+  --red-tint: #f6e3e0;
+  --green: #2b6a4b;
+  --amber: #8a5a00;
+  --focus: #2a4fa3;
+  --font: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- header ---------- */
+.top {
+  background: var(--sheet);
+  border-bottom: 1px solid var(--rule);
+  padding: 16px 32px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  position: sticky; top: 0; z-index: 10;
+}
+.top h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.top h1 span { font-weight: 400; color: var(--muted); margin-left: 10px; font-size: 15px; }
+.top-right { display: flex; align-items: center; gap: 12px; }
+.ts { font-size: 13px; color: var(--muted); }
+.btn {
+  font: inherit; cursor: pointer; white-space: nowrap;
+  font-weight: 600; font-size: 13px;
+  padding: 7px 14px; border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: var(--sheet); color: var(--ink);
+  text-decoration: none; display: inline-block;
+}
+.btn:hover { border-color: var(--ink); }
+
+/* ---------- layout ---------- */
+.wrap { max-width: 1380px; margin: 0 auto; padding: 32px 32px 80px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
+
+/* ---------- cards ---------- */
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.card-head {
+  background: var(--band); border-bottom: 1px solid var(--rule);
+  padding: 12px 18px; display: flex; align-items: baseline; justify-content: space-between;
+}
+.card-head h2 { font-size: 14px; font-weight: 700; letter-spacing: -0.005em; }
+.card-head .pill {
+  font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  background: var(--page); color: var(--muted);
+}
+.card table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.card th { text-align: left; font-weight: 600; font-size: 12px; padding: 7px 14px; color: var(--muted); border-bottom: 1px solid var(--rule-soft); }
+.card td { padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+.card tr:last-child td { border-bottom: none; }
+.card th.r, .card td.r { text-align: right; }
+
+/* ---------- stat dots ---------- */
+.st { white-space: nowrap; }
+.st::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+.st.confirmed::before, .st.ok::before, .st.approved::before { background: var(--green); }
+.st.revised::before, .st.pending::before, .st.at_risk::before { background: var(--amber); }
+.st.on_hold::before, .st.failed::before, .st.needs_renegotiation::before { background: var(--red); }
+.st.on_hold, .st.failed, .st.needs_renegotiation, .st.at_risk { color: var(--red); }
+
+/* ---------- big KPI strip ---------- */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin-bottom: 32px; }
+.kpi { background: var(--sheet); padding: 20px 22px; }
+.kpi .label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.kpi .value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.kpi .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.kpi .value.up { color: var(--green); }
+.kpi .value.down { color: var(--red); }
+
+/* ---------- was/now ---------- */
+.was { color: var(--red); text-decoration: line-through; text-decoration-thickness: 1.5px; font-weight: 400; margin-right: 6px; font-size: 12px; }
+.now { font-weight: 600; }
+
+/* ---------- dependency map ---------- */
+.map-card { margin-bottom: 32px; }
+.map { overflow-x: auto; padding: 4px 0 8px; }
+.map svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.map text { font-family: var(--font); }
+
+/* ---------- empty ---------- */
+.empty { color: var(--muted); padding: 14px; font-size: 13.5px; }
+
+/* ---------- refresh spinner ---------- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin 0.8s linear infinite; display: inline-block; }
+
+@media (max-width: 700px) {
+  .top { padding: 12px 16px; }
+  .wrap { padding: 20px 16px 60px; }
+  .kpi .value { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Event Manager <span>Current values</span></h1>
+  <div class="top-right">
+    <span class="ts" id="lastUpdated"></span>
+    <button class="btn" id="btnRefresh" type="button">↻ Refresh</button>
+    <a href="/" class="btn">← Back to desk</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="kpi-strip" id="kpiStrip">
+    <div class="kpi"><div class="label">Total committed</div><div class="value" id="kpiTotal">—</div><div class="sub" id="kpiSub"></div></div>
+    <div class="kpi"><div class="label">Sponsors</div><div class="value" id="kpiSponsors">—</div><div class="sub" id="kpiSponsorSub"></div></div>
+    <div class="kpi"><div class="label">Budget lines</div><div class="value" id="kpiBudget">—</div><div class="sub" id="kpiBudgetSub"></div></div>
+    <div class="kpi"><div class="label">Payments pending</div><div class="value" id="kpiPayments">—</div><div class="sub" id="kpiPaymentSub"></div></div>
+    <div class="kpi"><div class="label">Deliverables at risk</div><div class="value" id="kpiAtRisk">—</div><div class="sub" id="kpiAtRiskSub"></div></div>
+  </div>
+
+  <div class="card map-card">
+    <div class="card-head">
+      <h2>Dependency map</h2>
+      <span class="pill" id="mapPill"></span>
+    </div>
+    <div class="map"><svg id="map" role="img" aria-label="Sponsors, the budget lines they fund, the payments drawing on them, and the deliverables they were promised"></svg></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inr = n => '₹' + Math.round(n ?? 0).toLocaleString('en-IN');
+const words = s => String(s || '').replace(/_/g, ' ');
+const sentence = s => { const w = words(s); return w.charAt(0).toUpperCase() + w.slice(1); };
+
+function money(now, was) {
+  if (was != null && Math.round(was) !== Math.round(now))
+    return `<span class="was">${inr(was)}</span><span class="now">${inr(now)}</span>`;
+  return inr(now);
+}
+
+const stat = s => `<span class="st ${esc(s)}">${esc(sentence(s))}</span>`;
+
+async function load() {
+  const btn = $('btnRefresh');
+  btn.innerHTML = '<span class="spinning">↻</span> Refreshing…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/overview');
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    render(data.store || {});
+    renderMap(data.graph, data.store || {});
+    $('lastUpdated').textContent = 'Last updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    $('grid').innerHTML = `<p style="color:var(--red);padding:12px">Could not load data: ${esc(String(e))}. Is the server running?</p>`;
+  } finally {
+    btn.innerHTML = '↻ Refresh';
+    btn.disabled = false;
+  }
+}
+
+function render(s) {
+  const nm = {};
+  [...(s.sponsors||[]), ...(s.budget||[]), ...(s.deliverables||[]), ...(s.approvals||[])].forEach(x => { nm[x.id] = x.name; });
+  const tier = Object.fromEntries((s.sponsors||[]).map(x => [x.id, x.tier]));
+
+  // --- KPIs ---
+  const tracker = s.tracker || [];
+  const total = tracker.reduce((a, r) => a + (r.committed || 0), 0);
+  const revised = tracker.filter(r => r.status === 'revised').length;
+  $('kpiTotal').textContent = inr(total);
+  $('kpiSub').textContent = revised ? `${revised} revised` : 'all confirmed';
+
+  $('kpiSponsors').textContent = tracker.length;
+  $('kpiSponsorSub').textContent = tracker.filter(r => r.status === 'confirmed').length + ' confirmed';
+
+  const budget = s.budget || [];
+  $('kpiBudget').textContent = budget.length;
+  $('kpiBudgetSub').textContent = inr(budget.reduce((a, r) => a + (r.amount || 0), 0)) + ' total';
+
+  const approvals = s.approvals || [];
+  const pending = approvals.filter(r => r.status === 'pending').length;
+  const held = approvals.filter(r => r.status === 'on_hold').length;
+  $('kpiPayments').textContent = pending;
+  $('kpiPaymentSub').textContent = held ? `${held} on hold` : 'none on hold';
+  if (held) $('kpiPayments').className = 'value down';
+
+  const deliverables = s.deliverables || [];
+  const atRisk = deliverables.filter(r => ['at_risk','needs_renegotiation'].includes(r.status)).length;
+  $('kpiAtRisk').textContent = atRisk;
+  $('kpiAtRiskSub').textContent = atRisk ? 'need attention' : 'all clear';
+  $('kpiAtRisk').className = 'value' + (atRisk ? ' down' : ' up');
+
+  // --- Cards ---
+  const cards = [
+    {
+      title: 'Sponsors', pill: tracker.length,
+      head: ['Sponsor', 'Tier', 'Committed', 'Status'],
+      right: [2],
+      rows: tracker.map(r => [esc(r.name), esc(tier[r.sponsor_id] || '—'), money(r.committed, r.was), stat(r.status)])
+    },
+    {
+      title: 'Budget lines', pill: budget.length,
+      head: ['Line', 'Funded by', 'Amount'],
+      right: [2],
+      rows: budget.map(r => [esc(r.name), esc(Object.keys(r.funding||{}).map(k => nm[k]||k).join(', ')), money(r.amount, r.was)])
+    },
+    {
+      title: 'Deliverables', pill: deliverables.length,
+      head: ['Deliverable', 'Sponsor', 'Needs', 'Status'],
+      right: [2],
+      rows: deliverables.map(r => [esc(r.name), esc(nm[r.sponsor_id]||''), inr(r.required_amount), stat(r.status)])
+    },
+    {
+      title: 'Payments', pill: approvals.length,
+      head: ['Payment', 'Budget line', 'Amount', 'Status'],
+      right: [2],
+      rows: approvals.map(r => [esc(r.name), esc(nm[r.budget_line]||r.budget_line), inr(r.amount), stat(r.status)])
+    },
+    {
+      title: 'Calendar', pill: (s.calendar||[]).length,
+      head: ['Event', 'Date', 'Who'],
+      right: [],
+      rows: (s.calendar||[]).map(r => [esc(r.title), esc(r.date), esc((r.attendees||[]).join(', '))])
+    },
+    {
+      title: 'Outbox', pill: (s.outbox||[]).length,
+      head: ['To', 'Subject'],
+      right: [],
+      rows: (s.outbox||[]).map(m => [esc(m.to), esc(m.subject)])
+    },
+    {
+      title: 'Manual tasks', pill: (s.tasks||[]).length,
+      head: ['Task', 'Detail'],
+      right: [],
+      rows: (s.tasks||[]).map(t => [esc(t.title), esc(t.detail)])
+    }
+  ];
+
+  $('grid').innerHTML = cards.map(c => {
+    const bodyHtml = c.rows.length
+      ? `<table>
+          <thead><tr>${c.head.map((h,i) => `<th class="${c.right.includes(i)?'r':''}">${h}</th>`).join('')}</tr></thead>
+          <tbody>${c.rows.map(r => `<tr>${r.map((cell,i) => `<td class="${c.right.includes(i)?'r':''}">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>`
+      : `<p class="empty">Nothing here yet.</p>`;
+    return `
+      <div class="card">
+        <div class="card-head">
+          <h2>${esc(c.title)}</h2>
+          <span class="pill">${c.pill}</span>
+        </div>
+        ${bodyHtml}
+      </div>`;
+  }).join('');
+}
+
+/* ------------------------------------------------------------------ dependency map (current state) */
+const MAP_COLS = [
+  { kind: 'sponsor', title: 'Sponsors' }, { kind: 'budget_line', title: 'Budget lines' },
+  { kind: 'approval', title: 'Payments' }, { kind: 'deliverable', title: 'Deliverables' }
+];
+const clip = (s, n) => String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s);
+
+function renderMap(g, s) {
+  const svg = $('map');
+  if (!g || !g.nodes || !g.nodes.length) { svg.innerHTML = ''; $('mapPill').textContent = ''; return; }
+  $('mapPill').textContent = `${g.nodes.length} nodes`;
+
+  const W = 940, nodeW = 196, nodeH = 46, top = 44, step = 62;
+  const byKind = Object.fromEntries(MAP_COLS.map(c => [c.kind, g.nodes.filter(n => n.kind === c.kind)]));
+  const rowsMax = Math.max(...MAP_COLS.map(c => byKind[c.kind].length), 1);
+  const H = top + rowsMax * step + 12;
+  const cx = MAP_COLS.map((_, i) => 12 + nodeW / 2 + i * ((W - 24 - nodeW) / (MAP_COLS.length - 1)));
+  const pos = {};
+  MAP_COLS.forEach((c, ci) => {
+    const list = byKind[c.kind], offset = (rowsMax - list.length) * step / 2;
+    list.forEach((n, i) => { pos[n.id] = { x: cx[ci], y: top + offset + i * step + step / 2 - 4 }; });
+  });
+
+  let out = '';
+  MAP_COLS.forEach((c, ci) => {
+    out += `<text x="${cx[ci] - nodeW / 2}" y="22" font-size="13" font-weight="600" fill="#566070">${c.title}</text>`;
+  });
+
+  (g.edges || []).forEach(e => {
+    const a = pos[e.from], b = pos[e.to]; if (!a || !b) return;
+    const x1 = a.x + nodeW / 2, x2 = b.x - nodeW / 2, mid = (x1 + x2) / 2;
+    out += `<path d="M${x1} ${a.y} C${mid} ${a.y}, ${mid} ${b.y}, ${x2} ${b.y}" fill="none" stroke="#c9d1c9" stroke-width="1"/>`;
+  });
+
+  const live = Object.fromEntries([...(s.approvals || []), ...(s.deliverables || [])].map(x => [x.id, x.status]));
+  g.nodes.forEach(n => {
+    const p = pos[n.id]; if (!p) return;
+    const x = p.x - nodeW / 2, y = p.y - nodeH / 2;
+    let sub;
+    if (n.kind === 'sponsor') sub = `${n.tier || ''} tier, ${inr(n.amount)}`;
+    else if (n.kind === 'budget_line') sub = inr(n.amount);
+    else if (n.kind === 'approval') sub = `${inr(n.amount)}, ${words(live[n.id] || n.status)}`;
+    else { const st = live[n.id] || n.status; sub = `${inr(n.required)}${st && st !== 'planned' ? ', ' + words(st) : ''}`; }
+    out += `<g><rect x="${x}" y="${y}" width="${nodeW}" height="${nodeH}" rx="3" fill="#fcfcfa" stroke="#bfc9bf" stroke-width="1"/>
+      <text x="${x + 10}" y="${y + 19}" font-size="12.5" font-weight="600" fill="#1d2433">${esc(clip(n.label, 28))}</text>
+      <text x="${x + 10}" y="${y + 36}" font-size="12" fill="#566070">${esc(sub)}</text></g>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+}
+
+$('btnRefresh').onclick = load;
+load();
+
+// Auto-refresh every 10 seconds
+setInterval(load, 10000);
+</script>
+</body>
+</html>

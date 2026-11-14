@@ -1,0 +1,4 @@
+[
+  {"id":"s1","name":"TechNova Labs","tier":"Gold","committed":100000,"email":"priya@technova.example"},
+  {"id":"s2","name":"GreenByte","tier":"Silver","committed":30000,"email":"arun@greenbyte.example"}
+]

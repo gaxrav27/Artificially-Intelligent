@@ -1,0 +1,34 @@
+[
+  {
+    "id": "e1",
+    "title": "TechNova cuts its sponsorship by 40%",
+    "sponsor": "TechNova Labs",
+    "from": "priya@technova.example",
+    "subject": "Update on our sponsorship",
+    "body": "Hi team,\n\nDue to a revised marketing budget at our end, we need to reduce TechNova's sponsorship from ₹1,00,000 to ₹60,000. Please send us the updated deliverables by Nov 21.\n\nRegards,\nPriya, TechNova Labs"
+  },
+  {
+    "id": "e2",
+    "title": "TechNova cuts its sponsorship by 70%",
+    "sponsor": "TechNova Labs",
+    "from": "priya@technova.example",
+    "subject": "Urgent: TechNova Sponsorship Revision",
+    "body": "Hi organizers,\n\nFollowing our board review, we have to cut back all external festival commitments. TechNova can now only contribute ₹30,000 instead of ₹1,00,000. Please confirm deliverable revisions by Nov 19.\n\nBest,\nPriya, TechNova Labs"
+  },
+  {
+    "id": "e3",
+    "title": "GreenByte cuts its sponsorship by 50%",
+    "sponsor": "GreenByte",
+    "from": "arun@greenbyte.example",
+    "subject": "GreenByte Silver Tier Adjustment",
+    "body": "Hello team,\n\nDue to unexpected cashflow delays this quarter, GreenByte is revising our silver sponsorship from ₹30,000 to ₹15,000. Please let us know the revised lanyard and booth arrangements by Nov 25.\n\nThanks,\nArun, GreenByte"
+  },
+  {
+    "id": "e4",
+    "title": "TechNova raises its sponsorship by 50%",
+    "sponsor": "TechNova Labs",
+    "from": "priya@technova.example",
+    "subject": "Exciting news: Upgrading our sponsorship",
+    "body": "Hi team,\n\nGreat news from our marketing committee! We have approved an expansion of TechNova's sponsorship from ₹1,00,000 to ₹1,50,000. Let's discuss adding title sponsorship perks by Nov 28.\n\nRegards,\nPriya, TechNova Labs"
+  }
+]

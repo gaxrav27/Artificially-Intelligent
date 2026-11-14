@@ -1,0 +1,5 @@
+[
+  {"id":"b1","name":"Main Stage & AV","amount":60000,"funding":{"s1":40000,"s2":20000}},
+  {"id":"b2","name":"Marketing & Printing","amount":30000,"funding":{"s1":30000}},
+  {"id":"b3","name":"Prizes","amount":40000,"funding":{"s1":30000,"s2":10000}}
+]

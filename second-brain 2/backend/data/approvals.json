@@ -1,0 +1,5 @@
+[
+  {"id":"a1","name":"Stage vendor deposit","amount":25000,"budget_line":"b1","status":"pending"},
+  {"id":"a2","name":"Prize pool payout","amount":20000,"budget_line":"b3","status":"pending"},
+  {"id":"a3","name":"Poster printing order","amount":5000,"budget_line":"b2","status":"approved"}
+]

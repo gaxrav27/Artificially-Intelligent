@@ -1,0 +1,7 @@
+[
+  {"id":"d1","sponsor_id":"s1","name":"Title banner & stage naming","required_amount":100000,"status":"planned"},
+  {"id":"d2","sponsor_id":"s1","name":"15-min keynote slot","required_amount":80000,"status":"planned"},
+  {"id":"d3","sponsor_id":"s1","name":"Logo on posters & website","required_amount":40000,"status":"planned"},
+  {"id":"d4","sponsor_id":"s1","name":"Booth in main hall","required_amount":30000,"status":"planned"},
+  {"id":"d5","sponsor_id":"s2","name":"Logo on lanyards","required_amount":20000,"status":"planned"}
+]

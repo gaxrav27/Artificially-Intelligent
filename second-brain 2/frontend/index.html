@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Manager</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: #e8ede8;        /* ledger stock */
+  --sheet: #fcfcfa;       /* the paper things are written on */
+  --band: #dce4dc;        /* ledger heading band */
+  --ink: #1d2433;         /* blue-black pen ink */
+  --muted: #566070;
+  --rule: #bfc9bf;
+  --rule-soft: #dbe2db;
+  --red: #b3261e;         /* correction ink: used only for what changed */
+  --red-tint: #f6e3e0;
+  --green: #2b6a4b;
+  --amber: #8a5a00;
+  --focus: #2a4fa3;
+  --font: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- header ---------- */
+.top {
+  background: var(--sheet);
+  border-bottom: 1px solid var(--rule);
+  padding: 16px 32px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+}
+.top h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.top h1 span { font-weight: 400; color: var(--muted); margin-left: 10px; font-size: 15px; letter-spacing: 0; }
+
+/* ---------- buttons and fields ---------- */
+button { font: inherit; cursor: pointer; white-space: nowrap; }
+.btn {
+  font-weight: 600; font-size: 14px;
+  padding: 9px 16px; border-radius: 3px;
+  border: 1px solid var(--ink);
+  background: var(--ink); color: #fff;
+}
+.btn:hover:not(:disabled) { background: #2c364b; }
+.btn.plain { background: var(--sheet); color: var(--ink); border-color: var(--rule); }
+.btn.plain:hover:not(:disabled) { border-color: var(--ink); background: var(--sheet); }
+.btn.reject { background: var(--sheet); color: var(--red); border-color: var(--rule); }
+.btn.reject:hover:not(:disabled) { border-color: var(--red); background: var(--sheet); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+select, textarea {
+  font: inherit; color: var(--ink); width: 100%;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+}
+select { padding: 8px 10px; }
+label.field { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+
+/* ---------- layout ---------- */
+.wrap {
+  max-width: 1380px; margin: 0 auto; padding: 32px 32px 80px;
+  display: grid; grid-template-columns: 372px minmax(0, 1fr); gap: 44px 48px; align-items: start;
+  grid-template-areas: "in main" "log main" "inbox inbox"; grid-template-rows: auto 1fr auto;
+}
+.wrap > .a-in { grid-area: in; } .wrap > .a-main { grid-area: main; } .wrap > .a-log { grid-area: log; }
+.wrap > .a-inbox { grid-area: inbox; }
+.wrap > section { margin-bottom: 0; }
+.wrap > * { min-width: 0; }
+@media (max-width: 1040px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "in" "main" "log" "inbox"; grid-template-rows: auto; gap: 40px; padding: 24px 18px 64px; }
+  .top { padding: 14px 18px; } .top h1 span { display: none; }
+}
+
+section { margin-bottom: 44px; }
+section:last-child { margin-bottom: 0; }
+h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.005em; margin-bottom: 12px; }
+h2 .count { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 8px; }
+.lede { color: var(--muted); max-width: 62ch; }
+
+/* ---------- incoming email ---------- */
+.letter { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 18px; margin-top: 14px; }
+.letter dl { display: grid; grid-template-columns: 62px 1fr; row-gap: 2px; font-size: 13.5px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--rule-soft); }
+.letter dt { color: var(--muted); }
+.letter dd { overflow-wrap: anywhere; }
+.letter textarea { border: none; padding: 0; height: 168px; resize: vertical; line-height: 1.55; background: transparent; }
+.letter textarea:focus-visible { outline-offset: 6px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+.check { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--ink); width: 15px; height: 15px; }
+.error { margin-top: 12px; color: var(--red); font-size: 13.5px; }
+
+/* ---------- sign-off ---------- */
+.signoff { background: var(--sheet); border: 1px solid var(--ink); border-top-width: 4px; border-radius: 3px; padding: 18px 20px 20px; }
+.signoff h2 { margin-bottom: 4px; }
+.signoff > p { color: var(--muted); max-width: 64ch; margin-bottom: 14px; }
+.ask { display: grid; grid-template-columns: 22px 1fr; gap: 0 10px; padding: 11px 0; border-top: 1px solid var(--rule-soft); cursor: pointer; }
+.ask input { margin-top: 3px; accent-color: var(--ink); width: 16px; height: 16px; }
+.ask b { font-weight: 600; }
+.ask .why { color: var(--muted); font-size: 13.5px; }
+.ask details { margin-top: 6px; font-size: 13.5px; }
+.ask summary { cursor: pointer; color: var(--focus); width: max-content; }
+.ask pre { white-space: pre-wrap; font: inherit; background: var(--page); border-radius: 3px; padding: 10px 12px; margin-top: 6px; }
+.signoff .actions { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+
+/* ---------- change headline ---------- */
+.headline { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 8px; }
+.headline .who { font-size: 15px; font-weight: 600; width: 100%; }
+.headline .fig { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.headline .pct { font-size: 16px; font-weight: 600; color: var(--red); }
+.headline .pct.up { color: var(--green); }
+.headline .by { color: var(--muted); font-size: 14px; }
+.summary { max-width: 66ch; margin-bottom: 18px; }
+
+/* the signature: old figures are struck out in correction ink, new ones written beside them */
+.was { color: var(--red); text-decoration: line-through; text-decoration-thickness: 1.5px; font-weight: 400; margin-right: 8px; }
+.now { font-weight: 600; }
+
+/* ---------- tables ---------- */
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 600; font-size: 13px; padding: 8px 14px; background: var(--band); border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+th.r, td.r { text-align: right; white-space: nowrap; }
+td .sub { color: var(--muted); font-size: 13px; margin-top: 1px; }
+tr.group td { background: var(--page); font-weight: 600; font-size: 13px; padding: 6px 14px; color: var(--muted); }
+.sev-high { color: var(--red); font-weight: 600; }
+.sev-medium { color: var(--amber); font-weight: 600; }
+.sev-low { color: var(--muted); }
+.st { white-space: nowrap; }
+.st::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; background: var(--muted); }
+.st.ok::before, .st.confirmed::before, .st.approved::before { background: var(--green); }
+.st.failed::before, .st.on_hold::before, .st.at_risk::before, .st.needs_renegotiation::before { background: var(--red); }
+.st.waiting::before, .st.revised::before, .st.pending::before { background: var(--amber); }
+.st.failed, .st.on_hold, .st.needs_renegotiation, .st.at_risk { color: var(--red); }
+
+.desks { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px 28px; margin-bottom: 18px; }
+.desks h3 { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.desks p { font-size: 14px; color: var(--muted); }
+.outcome { margin-top: 14px; max-width: 66ch; }
+.outcome .bad { color: var(--red); }
+
+/* ---------- map ---------- */
+.map { overflow-x: auto; background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; }
+.map svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.map text { font-family: var(--font); }
+
+/* ---------- records ---------- */
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--rule); margin-bottom: 14px; overflow-x: auto; }
+.tab { background: none; border: none; border-bottom: 3px solid transparent; padding: 6px 0 8px; margin-bottom: -1px; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.tab .n { font-weight: 400; margin-left: 4px; color: var(--red); }
+.mail { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
+.mail dl { display: grid; grid-template-columns: 62px 1fr; font-size: 13.5px; margin-bottom: 8px; }
+.mail dt { color: var(--muted); }
+.mail pre { font: inherit; white-space: pre-wrap; border-top: 1px solid var(--rule-soft); padding-top: 10px; }
+.empty { color: var(--muted); padding: 6px 0; }
+
+/* ---------- live inbox ---------- */
+.live-inbox-form { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 18px; margin-top: 14px; }
+.live-inbox-form input[type=text], .live-inbox-form input[type=email] {
+  font: inherit; color: var(--ink); width: 100%;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+  padding: 8px 10px; margin-bottom: 8px;
+}
+.live-entry { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; margin-top: 10px; }
+.live-entry dl { display: grid; grid-template-columns: 72px 1fr; font-size: 13.5px; margin-bottom: 8px; }
+.live-entry dt { color: var(--muted); }
+.live-entry pre { font: inherit; white-space: pre-wrap; border-top: 1px solid var(--rule-soft); padding-top: 8px; font-size: 13px; }
+.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+.badge.auto { background: #d6f0e0; color: var(--green); }
+.badge.pending { background: #fdf0d0; color: var(--amber); }
+.badge.error { background: var(--red-tint); color: var(--red); }
+.run-note { font-size: 13.5px; color: var(--muted); }
+.run-note.bad { color: var(--red); }
+.hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.live-manual { margin-top: 14px; }
+.live-manual > summary { cursor: pointer; color: var(--focus); font-size: 13.5px; }
+.live-report { font-size: 13.5px; margin-top: 8px; }
+
+/* ---------- activity ---------- */
+.log { list-style: none; max-height: 420px; overflow-y: auto; font-size: 13.5px; border-top: 1px solid var(--rule); }
+.log li { display: grid; grid-template-columns: 58px 108px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--rule-soft); }
+.log .t { color: var(--muted); }
+.log .a { font-weight: 600; }
+.log .warn .m { color: var(--amber); }
+.log .error .m { color: var(--red); }
+.log .success .m { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Event Manager<span>Sponsorship desk</span></h1>
+  <nav style="display:flex;gap:10px;align-items:center">
+    <a href="/dashboard" target="_blank" class="btn plain" style="text-decoration:none;font-size:13px">Current values ↗</a>
+    <button class="btn plain" id="btnReset" type="button">Start over</button>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="a-in" aria-labelledby="hIncoming">
+    <h2 id="hIncoming">Incoming email</h2>
+    <label class="field" for="sample">Sample email</label>
+    <select id="sample"></select>
+
+    <div class="letter">
+      <dl>
+        <dt>From</dt><dd id="metaFrom"></dd>
+        <dt>Subject</dt><dd id="metaSubject"></dd>
+      </dl>
+      <label class="field" for="mailBody" style="position:absolute;left:-9999px">Message</label>
+      <textarea id="mailBody" spellcheck="false"></textarea>
+    </div>
+
+    <div class="actions">
+      <label class="check"><input type="checkbox" id="chkOutage"> Simulate a tool outage</label>
+      <span class="run-note" id="runStatus">Pick a sample or paste an email. It is read and acted on automatically.</span>
+    </div>
+    <p class="error" id="errBox" role="alert" hidden></p>
+  </section>
+
+  <div class="a-main">
+    <section id="secChange" aria-labelledby="hChange"></section>
+    <section id="secPlan" aria-labelledby="hPlan" hidden></section>
+
+    <section aria-labelledby="hMap">
+      <h2 id="hMap">What depends on what</h2>
+      <div class="map"><svg id="map" role="img" aria-label="Sponsors, the budget lines they fund, the payments drawing on them, and the deliverables they were promised"></svg></div>
+    </section>
+
+    <section aria-labelledby="hRecords">
+      <h2 id="hRecords">Records</h2>
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div id="tabBody"></div>
+    </section>
+  </div>
+
+  <section class="a-log" aria-labelledby="hLog">
+    <h2 id="hLog">Activity</h2>
+    <ul class="log" id="log" aria-live="polite"></ul>
+  </section>
+
+  <!-- Live email: spans full width below the 2-col grid -->
+  <section class="a-inbox" aria-labelledby="hLiveInbox">
+    <h2 id="hLiveInbox">Live email <span class="count" id="liveCount"></span></h2>
+    <p class="lede" style="margin-bottom:12px">Connect your mailbox once. This desk checks it every few seconds, reads each new email and executes the actions on its own — no review step.</p>
+
+    <div class="live-inbox-form">
+      <div class="live-grid">
+        <div>
+          <label class="field" for="gmailAddress">Email address</label>
+          <input type="email" id="gmailAddress" placeholder="you@gmail.com" autocomplete="username">
+        </div>
+        <div>
+          <label class="field" for="gmailPassword">App password</label>
+          <input type="password" id="gmailPassword" placeholder="16-character Gmail app password" autocomplete="off">
+        </div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn" id="btnConnect" type="button">Check my inbox</button>
+        <button class="btn plain" id="btnDisconnect" type="button" hidden>Stop watching</button>
+        <span id="gmailStatus" class="run-note">Not connected.</span>
+      </div>
+      <p class="hint">Use a Gmail App Password from myaccount.google.com/apppasswords. It is kept in this server's memory only, never written to disk.</p>
+    </div>
+
+    <details class="live-manual">
+      <summary>Or inject a test email</summary>
+      <div class="live-inbox-form" style="margin-top:10px">
+        <label class="field" for="liveFrom">From (email)</label>
+        <input type="email" id="liveFrom" placeholder="priya@technova.example">
+        <label class="field" for="liveSubject">Subject</label>
+        <input type="text" id="liveSubject" placeholder="Update on our sponsorship">
+        <label class="field" for="liveBody">Message body</label>
+        <textarea id="liveBody" spellcheck="false" style="height:120px;padding:8px 10px;border:1px solid var(--rule);border-radius:3px;resize:vertical;"></textarea>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn" id="btnSendLive" type="button">Process this email</button>
+          <span id="liveStatus" style="font-size:13.5px;color:var(--muted)"></span>
+        </div>
+      </div>
+    </details>
+
+    <div id="liveEntries"></div>
+  </section>
+
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const inr = n => '₹' + Math.round(n ?? 0).toLocaleString('en-IN');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const state = { threadId: null, flow: null, overview: null, scenarios: [], snap: null, impacted: new Set(), tab: 'sponsors' };
+
+async function api(path, body) {
+  const res = await fetch('/api' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// the store is whatever the latest snapshot says, else the baseline
+const store = () => (state.snap && state.snap.store) || (state.overview && state.overview.store) || {};
+const graphData = () => (state.snap && state.snap.graph) || (state.overview && state.overview.graph) || { nodes: [], edges: [] };
+
+function nameLookup() {
+  const s = store(), m = {};
+  [...(s.sponsors || []), ...(s.budget || []), ...(s.deliverables || []), ...(s.approvals || [])].forEach(x => { m[x.id] = x.name; });
+  return m;
+}
+
+/* was / now pair: only shows the old figure when it really changed */
+function money(now, was) {
+  if (was != null && Math.round(was) !== Math.round(now)) return `<span class="was">${inr(was)}</span><span class="now">${inr(now)}</span>`;
+  return inr(now);
+}
+const words = s => String(s || '').replace(/_/g, ' ');
+const sentence = s => { const w = words(s); return w.charAt(0).toUpperCase() + w.slice(1); };
+
+/* ------------------------------------------------------------------ sign-off */
+function describe(act, nm) {
+  const a = act.args || {};
+  switch (act.tool) {
+    case 'update_sponsor_tracker': return `Set ${nm[a.sponsor_id] || a.sponsor_id} to ${inr(a.committed)} in the sponsor tracker`;
+    case 'update_budget': return `Change the ${nm[a.line_id] || a.line_id} budget to ${inr(a.new_amount)}`;
+    case 'update_deliverable': return `Mark "${nm[a.deliverable_id] || a.deliverable_id}" as ${words(a.status)}`;
+    case 'hold_approval': return `Put the "${nm[a.approval_id] || a.approval_id}" payment on hold`;
+    case 'send_email': return `Email ${a.to}`;
+    case 'create_calendar_event': return `Add to the calendar: ${a.title}${a.date && a.date !== 'TBD' ? ` (${a.date})` : ''}`;
+    case 'create_task': return a.title;
+    default: return words(act.tool);
+  }
+}
+
+/* ------------------------------------------------------------------ what changed */
+const KIND_ORDER = ['tracker', 'budget_line', 'approval', 'deliverable'];
+const KIND_NAME = { tracker: 'Sponsor tracker', budget_line: 'Budget lines', approval: 'Payments waiting for approval', deliverable: 'Promised deliverables' };
+
+function renderChange() {
+  const snap = state.snap, box = $('secChange');
+  if (!snap) {
+    box.innerHTML = `<h2 id="hChange">What changes</h2><p class="lede">Choose a sample email or paste your own. It is read automatically, and this is where you will see what the change touches across budgets, deliverables and payments.</p>`;
+    return;
+  }
+  if (!snap.update) {
+    box.innerHTML = `<h2 id="hChange">What changes</h2><p class="outcome bad">${esc(snap.report || 'The email could not be read.')} Check that it names a sponsor and a new amount.</p>`;
+    return;
+  }
+  const u = snap.update, impacts = snap.impacts || [];
+  const pct = Math.round((u.new_amount - u.old_amount) / u.old_amount * 100);
+  const rows = KIND_ORDER.map(kind => {
+    const items = impacts.filter(i => i.kind === kind);
+    if (!items.length) return '';
+    return `<tr class="group"><td colspan="3">${KIND_NAME[kind]}</td></tr>` + items.map(i => {
+      const change = (kind === 'tracker' || kind === 'budget_line') ? money(i.after, i.before) : esc(i.detail);
+      return `<tr><td>${esc(kind === 'tracker' ? u.sponsor_name : i.label)}</td><td>${change}</td><td class="sev-${esc(i.severity)}">${sentence(i.severity)}</td></tr>`;
+    }).join('');
+  }).join('');
+  box.innerHTML = `
+    <h2 id="hChange">What changes</h2>
+    <div class="headline">
+      <div class="who">${esc(u.sponsor_name)}</div>
+      <div class="fig">${money(u.new_amount, u.old_amount)}</div>
+      <div class="pct ${pct > 0 ? 'up' : ''}">${pct > 0 ? '+' : ''}${pct}%</div>
+      ${u.deadline ? `<div class="by">Reply wanted by ${esc(u.deadline)}</div>` : ''}
+    </div>
+    ${snap.summary ? `<p class="summary">${esc(snap.summary)}</p>` : ''}
+    <div class="sheet"><table>
+      <thead><tr><th>Item</th><th>Change</th><th>Impact</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+/* ------------------------------------------------------------------ plan */
+function renderPlan() {
+  const snap = state.snap, box = $('secPlan');
+  const plan = (snap && snap.plan) || [];
+  box.hidden = !plan.length;
+  if (!plan.length) return;
+  const nm = nameLookup(), res = snap.results || {};
+  const delibs = snap.deliberations || [];
+  const desks = delibs.filter(d => d.agent !== 'Master Planning Agent');
+  const master = delibs.find(d => d.agent === 'Master Planning Agent');
+
+  const statusOf = a => {
+    const r = res[a.id];
+    if (r) return r.status === 'ok' ? ['ok', 'Done'] : r.status === 'failed' ? ['failed', 'Failed'] : ['pending', 'Not run'];
+    return ['pending', 'Runs automatically'];
+  };
+  const rows = plan.map(a => {
+    const [cls, label] = statusOf(a);
+    return `<tr><td>${esc(describe(a, nm))}<div class="sub">${esc(a.rationale)}</div></td><td class="st ${cls}">${label}</td></tr>`;
+  }).join('');
+
+  let outcome = '';
+  if (snap.status === 'done' && snap.report) {
+    const checks = snap.checks || [], bad = checks.filter(c => !c.passed).length;
+    outcome = `<p class="outcome">${esc(snap.report)}${checks.length ? ` ${bad ? `<span class="bad">${bad} of ${checks.length} results did not match the records.</span>` : `All ${checks.length} results were checked against the records and match.`}` : ''}</p>`;
+  }
+  box.innerHTML = `
+    <h2 id="hPlan">The plan</h2>
+    <div class="desks">${desks.map(d => `<div><h3>${esc(d.agent.replace(' Agent', ''))}</h3><p>${esc(d.summary)}</p></div>`).join('')}</div>
+    ${master ? `<p class="lede" style="margin-bottom:12px">${esc(master.summary)}</p>` : ''}
+    <div class="sheet"><table>
+      <thead><tr><th>Action</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${outcome}`;
+}
+
+/* ------------------------------------------------------------------ dependency map */
+const COLS = [
+  { kind: 'sponsor', title: 'Sponsors' }, { kind: 'budget_line', title: 'Budget lines' },
+  { kind: 'approval', title: 'Payments' }, { kind: 'deliverable', title: 'Deliverables' }
+];
+const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+
+function renderMap() {
+  const g = graphData(), svg = $('map');
+  if (!g.nodes || !g.nodes.length) { svg.innerHTML = ''; return; }
+  const imp = new Map((state.snap && state.snap.impacts || []).map(i => [i.node_id.replace('tracker:', ''), i]));
+  const hit = id => imp.has(id);
+
+  const W = 940, nodeW = 196, nodeH = 46, top = 44;
+  const live = Object.fromEntries([...(store().approvals || []), ...(store().deliverables || [])].map(x => [x.id, x.status]));
+  const byKind = Object.fromEntries(COLS.map(c => [c.kind, g.nodes.filter(n => n.kind === c.kind)]));
+  const rowsMax = Math.max(...COLS.map(c => byKind[c.kind].length), 1);
+  const step = 62, H = top + rowsMax * step + 12;
+  const cx = COLS.map((_, i) => 12 + nodeW / 2 + i * ((W - 24 - nodeW) / (COLS.length - 1)));
+  const pos = {};
+  COLS.forEach((c, ci) => {
+    const list = byKind[c.kind], offset = (rowsMax - list.length) * step / 2;
+    list.forEach((n, i) => { pos[n.id] = { x: cx[ci], y: top + offset + i * step + step / 2 - 4 }; });
+  });
+
+  let out = '';
+  COLS.forEach((c, ci) => { out += `<text x="${cx[ci] - nodeW / 2}" y="22" font-size="13" font-weight="600" fill="#566070">${c.title}</text>`; });
+
+  (g.edges || []).forEach(e => {
+    const a = pos[e.from], b = pos[e.to]; if (!a || !b) return;
+    const x1 = a.x + nodeW / 2, x2 = b.x - nodeW / 2, mid = (x1 + x2) / 2, on = hit(e.from) && hit(e.to);
+    out += `<path d="M${x1} ${a.y} C${mid} ${a.y}, ${mid} ${b.y}, ${x2} ${b.y}" fill="none" stroke="${on ? '#b3261e' : '#c9d1c9'}" stroke-width="${on ? 1.8 : 1}"/>`;
+  });
+
+  g.nodes.forEach(n => {
+    const p = pos[n.id]; if (!p) return;
+    const on = hit(n.id), i = imp.get(n.id), x = p.x - nodeW / 2, y = p.y - nodeH / 2;
+    let sub;
+    if (n.kind === 'sponsor') sub = `${n.tier || ''} tier, ${inr(n.amount)}`;
+    else if (n.kind === 'budget_line' && i && i.before != null && Math.round(i.before) !== Math.round(i.after))
+      sub = `<tspan fill="#b3261e" text-decoration="line-through">${inr(i.before)}</tspan><tspan dx="6" font-weight="600" fill="#1d2433">${inr(i.after)}</tspan>`;
+    else if (n.kind === 'budget_line') sub = inr(n.amount);
+    else if (n.kind === 'approval') sub = `${inr(n.amount)}, ${words(live[n.id] || n.status)}`;
+    else { const st = live[n.id] || n.status; sub = `${inr(n.required)}${st && st !== 'planned' ? ', ' + words(st) : ''}`; }
+    out += `<g><rect x="${x}" y="${y}" width="${nodeW}" height="${nodeH}" rx="3" fill="${on ? '#f6e3e0' : '#fcfcfa'}" stroke="${on ? '#b3261e' : '#bfc9bf'}" stroke-width="${on ? 1.5 : 1}"/>
+      <text x="${x + 10}" y="${y + 19}" font-size="12.5" font-weight="600" fill="#1d2433">${esc(clip(n.label, 28))}</text>
+      <text x="${x + 10}" y="${y + 36}" font-size="12" fill="#566070">${sub}</text></g>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+}
+
+/* ------------------------------------------------------------------ records */
+function table(head, rows, right = []) {
+  if (!rows.length) return `<p class="empty">Nothing here.</p>`;
+  return `<div class="sheet"><table><thead><tr>${head.map((h, i) => `<th class="${right.includes(i) ? 'r' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${
+    rows.map(r => `<tr>${r.map((c, i) => `<td class="${right.includes(i) ? 'r' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const stat = s => `<span class="st ${esc(s)}">${esc(sentence(s))}</span>`;
+
+function recordTabs() {
+  const s = store(), nm = nameLookup(), tier = Object.fromEntries((s.sponsors || []).map(x => [x.id, x.tier]));
+  const outbox = s.outbox || [], tasks = s.tasks || [];
+  return [
+    { id: 'sponsors', label: 'Sponsors', html: () => table(['Sponsor', 'Tier', 'Committed', 'Status'],
+        (s.tracker || []).map(r => [esc(r.name), esc(tier[r.sponsor_id] || ''), money(r.committed, r.was), stat(r.status)]), [2]) },
+    { id: 'budget', label: 'Budget', html: () => table(['Budget line', 'Funded by', 'Amount'],
+        (s.budget || []).map(r => [esc(r.name), esc(Object.keys(r.funding || {}).map(k => nm[k] || k).join(', ')), money(r.amount, r.was)]), [2]) },
+    { id: 'deliverables', label: 'Deliverables', html: () => table(['Deliverable', 'Sponsor', 'Needs', 'Status'],
+        (s.deliverables || []).map(r => [esc(r.name), esc(nm[r.sponsor_id] || ''), inr(r.required_amount), stat(r.status)]), [2]) },
+    { id: 'payments', label: 'Payments', html: () => table(['Payment', 'Budget line', 'Amount', 'Status'],
+        (s.approvals || []).map(r => [esc(r.name), esc(nm[r.budget_line] || r.budget_line), inr(r.amount), stat(r.status)]), [2]) },
+    { id: 'calendar', label: 'Calendar', html: () => table(['Event', 'Date', 'Who'],
+        (s.calendar || []).map(r => [esc(r.title), esc(r.date), esc((r.attendees || []).join(', '))])) },
+    { id: 'outbox', label: 'Outbox', n: outbox.length, html: () => outbox.length ? outbox.map(m => `
+        <div class="mail"><dl><dt>To</dt><dd>${esc(m.to)}</dd><dt>Subject</dt><dd>${esc(m.subject)}</dd></dl><pre>${esc(m.body)}</pre></div>`).join('')
+        : `<p class="empty">No emails sent yet.</p>` },
+    { id: 'tasks', label: 'Manual tasks', n: tasks.length, html: () => tasks.length ? table(['Task', 'Details'],
+        tasks.map(t => [esc(t.title), esc(t.detail)])) : `<p class="empty">Nothing was handed to a person.</p>` }
+  ];
+}
+
+function renderRecords() {
+  const tabs = recordTabs();
+  if (!tabs.find(t => t.id === state.tab)) state.tab = tabs[0].id;
+  $('tabs').innerHTML = tabs.map(t => `<button class="tab" role="tab" type="button" data-tab="${t.id}" aria-selected="${t.id === state.tab}">${t.label}${t.n ? `<span class="n">${t.n}</span>` : ''}</button>`).join('');
+  $('tabBody').innerHTML = tabs.find(t => t.id === state.tab).html();
+}
+
+/* ------------------------------------------------------------------ activity */
+function renderLog() {
+  const trace = (state.snap && state.snap.trace) || [], box = $('log');
+  if (!trace.length) { box.innerHTML = `<li class="empty" style="display:block;border:none">Nothing yet. Each agent adds a line here as it works.</li>`; return; }
+  box.innerHTML = trace.map(t => `<li class="${esc(t.level || 'info')}"><span class="t">${esc(t.ts)}</span><span class="a">${esc(t.agent)}</span><span class="m">${esc(t.msg)}</span></li>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ------------------------------------------------------------------ running */
+function render() {
+  renderChange(); renderPlan(); renderMap(); renderRecords(); renderLog();
+}
+
+function apply(snap) {
+  state.snap = snap;
+  state.threadId = snap.thread_id;
+  state.impacted = new Set((snap.impacts || []).map(i => i.node_id));
+  render();
+}
+
+function showError(msg) { const e = $('errBox'); e.hidden = !msg; e.textContent = msg || ''; }
+
+async function readStream(res) {
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) if (line.trim()) { const ev = JSON.parse(line); if (ev.snapshot) apply(ev.snapshot); }
+  }
+}
+
+async function post(path, body) {
+  return fetch('/api' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+}
+
+/* No review step: any change to the email starts the run by itself. */
+let runTimer = null, running = false;
+
+function scheduleRun(delay = 800) {
+  clearTimeout(runTimer);
+  if (!$('mailBody').value.trim()) return;
+  runTimer = setTimeout(() => autoRun($('mailBody').value), delay);
+}
+
+async function autoRun(message) {
+  if (running) { runTimer = setTimeout(() => autoRun($('mailBody').value), 500); return; }
+  running = true;
+  const status = $('runStatus');
+  status.classList.remove('bad');
+  status.textContent = 'Reading the email and executing the plan…';
+  showError('');
+  const body = { message, simulate_failure: $('chkOutage').checked, auto_reset: true };
+  try {
+    const res = await post('/stream_run', body);
+    if (!res.ok) throw new Error(await res.text());
+    await readStream(res);
+    status.textContent = 'Done — the actions were executed automatically.';
+  } catch (err) {
+    try {
+      apply(await api('/run', body));
+      status.textContent = 'Done — the actions were executed automatically.';
+    } catch (e2) {
+      status.textContent = '';
+      showError('The email could not be processed. Check that the server is still running, then try again.');
+      console.error(e2);
+    }
+  } finally {
+    running = false;
+  }
+}
+
+function pickSample(i, run = true) {
+  const sc = state.scenarios[i]; if (!sc) return;
+  $('metaFrom').textContent = sc.from || '';
+  $('metaSubject').textContent = sc.subject || '';
+  $('mailBody').value = sc.body || '';
+  if (run) scheduleRun(150);
+}
+
+async function startOver() {
+  showError('');
+  const o = await api('/reset', {});
+  state.overview = o; state.snap = null; state.impacted = new Set();
+  liveInbox.entries = [];
+  liveInbox.applied = null;
+  renderLiveInbox();
+  render();
+}
+
+/* ------------------------------------------------------------------ live inbox */
+const liveInbox = { entries: [], applied: null };
+
+function renderGmailStatus(st) {
+  if (!st) return;
+  const el = $('gmailStatus'), on = $('btnConnect'), off = $('btnDisconnect');
+  if (st.running) {
+    on.hidden = true; off.hidden = false;
+    if (st.error) {
+      el.classList.add('bad');
+      el.textContent = st.error;
+      return;
+    }
+    el.classList.remove('bad');
+    el.textContent = st.authenticated
+      ? `Watching ${st.address} · checked ${st.last_checked || '…'} · ${st.emails_fetched} email${st.emails_fetched === 1 ? '' : 's'} fetched`
+      : `Signing in to ${st.address}…`;
+  } else {
+    el.classList.toggle('bad', !!st.error);
+    el.textContent = st.error || (st.address ? `Stopped watching ${st.address}.` : 'Not connected.');
+    on.hidden = false; off.hidden = true;
+  }
+}
+
+function renderLiveInbox() {
+  const entries = liveInbox.entries;
+  $('liveCount').textContent = entries.length ? `${entries.length} email${entries.length > 1 ? 's' : ''}` : '';
+  if (!entries.length) { $('liveEntries').innerHTML = '<p class="empty" style="margin-top:10px">No emails fetched yet.</p>'; return; }
+  $('liveEntries').innerHTML = entries.map(e => {
+    const badge = e.error ? `<span class="badge error">Error</span>`
+      : !e.processed ? `<span class="badge pending">Processing…</span>`
+      : `<span class="badge auto">Applied automatically</span>${e.high_impact ? `<span class="badge pending">High impact</span>` : ''}`;
+    const impacts = (e.snap && e.snap.impacts) || [];
+    const highImpacts = impacts.filter(i => i.severity === 'high');
+    const impactHtml = impacts.length ? `
+      <details style="margin-top:10px;font-size:13.5px">
+        <summary style="cursor:pointer;color:var(--focus)">
+          ${impacts.length} impact(s) detected${highImpacts.length ? ` — <span style="color:var(--red)">${highImpacts.length} high-impact</span>` : ''}
+        </summary>
+        <ul style="margin-top:6px;padding-left:18px;line-height:1.7">
+          ${impacts.map(i => `<li class="sev-${esc(i.severity)}">${esc(i.label)}: ${esc(i.detail)}</li>`).join('')}
+        </ul>
+      </details>` : '';
+    return `
+      <div class="live-entry" id="live-${esc(e.id)}">
+        <dl>
+          <dt>From</dt><dd>${esc(e.from_)}</dd>
+          <dt>Subject</dt><dd>${esc(e.subject)}${badge}</dd>
+        </dl>
+        <pre>${esc(e.body)}</pre>
+        ${impactHtml}
+        ${e.snap && e.snap.report ? `<p class="live-report">${esc(e.snap.report)}</p>` : ''}
+        ${e.error ? `<p class="error" style="margin-top:8px">${esc(e.error)}</p>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function connectGmail() {
+  const status = $('gmailStatus'), btn = $('btnConnect');
+  const address = $('gmailAddress').value.trim();
+  const app_password = $('gmailPassword').value.trim();
+  if (!address || !app_password) { status.textContent = 'Enter your email address and app password.'; return; }
+  btn.disabled = true; status.classList.remove('bad'); status.textContent = 'Signing in to your inbox…';
+  try {
+    const res = await fetch('/api/gmail/connect', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ address, app_password })
+    });
+    const data = await res.json();
+    $('gmailPassword').value = '';
+    renderGmailStatus(data.status);
+    if (!data.ok) status.textContent = data.error || 'Could not start watching.';
+    else setTimeout(pollLive, 3000);
+  } catch (err) {
+    status.textContent = 'Could not reach the server.';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function disconnectGmail() {
+  try {
+    const res = await fetch('/api/gmail/disconnect', { method: 'POST' });
+    const data = await res.json();
+    renderGmailStatus(data.status);
+  } catch (err) { $('gmailStatus').textContent = 'Could not reach the server.'; }
+}
+
+async function sendLiveEmail() {
+  const btn = $('btnSendLive'), status = $('liveStatus');
+  const from_ = $('liveFrom').value.trim();
+  const subject = $('liveSubject').value.trim();
+  const body = $('liveBody').value.trim();
+  if (!from_ || !body) { status.textContent = 'Fill in From and Message body.'; return; }
+  btn.disabled = true; status.textContent = 'Processing…';
+  const placeholder = { id: '_pending', from_, subject, body, processed: false, auto_applied: false, high_impact: false, snap: null };
+  liveInbox.entries.unshift(placeholder);
+  renderLiveInbox();
+  try {
+    const res = await fetch('/api/live_inbox', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ from_: from_, subject, body })
+    });
+    const entry = await res.json();
+    liveInbox.entries[0] = entry;
+    status.textContent = entry.error ? '✗ Error: ' + entry.error : '✓ Read and executed automatically.';
+    if (entry.snap) { liveInbox.applied = entry.id; apply(entry.snap); }
+  } catch(err) {
+    liveInbox.entries[0].error = String(err);
+    status.textContent = '✗ Could not reach the server.';
+  } finally {
+    btn.disabled = false;
+    renderLiveInbox();
+  }
+}
+
+/* Keep the inbox and the desk's records/graph in step with what the watcher is doing. */
+async function pollLive() {
+  try {
+    const [entries, st] = await Promise.all([api('/live_inbox'), api('/gmail/status')]);
+    renderGmailStatus(st);
+    const changed = entries.length !== liveInbox.entries.length ||
+      entries.some((e, i) => e.id !== (liveInbox.entries[i] || {}).id) ||
+      entries.some((e, i) => e.processed !== (liveInbox.entries[i] || {}).processed);
+    liveInbox.entries = entries;
+    if (changed) renderLiveInbox();
+    const latest = entries.find(e => e.snap);
+    if (latest && latest.id !== liveInbox.applied) {
+      liveInbox.applied = latest.id;
+      apply(latest.snap);
+    }
+  } catch (err) { /* server busy or restarting; next poll will catch up */ }
+}
+
+function bind() {
+  $('btnReset').onclick = () => startOver().catch(() => showError('Could not reset. Check that the server is still running.'));
+  $('sample').onchange = e => pickSample(+e.target.value);
+  $('mailBody').addEventListener('input', () => scheduleRun());
+  $('chkOutage').addEventListener('change', () => scheduleRun(0));
+  $('tabs').addEventListener('click', e => {
+    const b = e.target.closest('.tab'); if (!b) return;
+    state.tab = b.dataset.tab; renderRecords();
+  });
+  $('btnSendLive').onclick = sendLiveEmail;
+  $('btnConnect').onclick = connectGmail;
+  $('btnDisconnect').onclick = disconnectGmail;
+}
+
+(async () => {
+  bind();
+  pollLive();
+  setInterval(pollLive, 4000);
+  try {
+    const [flow, overview, scenarios] = await Promise.all([api('/flow'), api('/overview'), api('/scenarios')]);
+    state.flow = flow; state.overview = overview; state.scenarios = scenarios;
+    $('sample').innerHTML = scenarios.map((s, i) => `<option value="${i}">${esc(s.title)}</option>`).join('');
+    pickSample(0, false);
+    render();
+    renderLiveInbox();
+  } catch (err) {
+    console.error(err);
+    showError('Could not reach the server. Start it with ./run.sh and reload this page.');
+  }
+})();
+</script>
+</body>
+</html>

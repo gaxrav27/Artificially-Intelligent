@@ -1,0 +1,6 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+langgraph>=0.3
+networkx>=3.2
+pydantic>=2.6
+openai>=1.30
